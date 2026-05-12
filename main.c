@@ -1,9 +1,9 @@
 /**
  * main.c — Linux System Monitor
- * Entry point: main loop, signal handler, tampilan konsol.
+ * Entry point: main loop, signal handler, console display.
  *
- * Standar: C11/C17
- * Kompilasi: gcc -std=c11 -Wall -Wextra -O2 -o sysmon main.c sysmon.c
+ * Standard: C11/C17
+ * Compilation: gcc -std=c11 -Wall -Wextra -O2 -o sysmon main.c sysmon.c
  */
 
 #include "sysmon.h"
@@ -11,7 +11,7 @@
 
 /* ── Signal Handler ─────────────────────────────────────────── */
 
-/** Flag volatile agar aman diakses dari signal handler */
+/** Volatile flag for safe access from signal handler */
 static volatile sig_atomic_t g_running = 1;
 
 static void handle_signal(int sig)
@@ -29,15 +29,15 @@ static void print_banner(const char *log_path)
     printf("  ║          Linux System Monitor v%-6s           ║\n", SYSMON_VERSION);
     printf("  ╠══════════════════════════════════════════════════╣\n");
     printf("  ║  Log    : %-38s  ║\n", log_path);
-    printf("  ║  Rotasi : setiap %-5d MB                        ║\n",
+    printf("  ║  Rotation: every %-5d MB                        ║\n",
            (int)(LOG_MAX_BYTES / (1024 * 1024)));
-    printf("  ║  Interval: setiap %-4d detik                     ║\n", SAMPLE_INTERVAL);
+    printf("  ║  Interval: every %-4d seconds                    ║\n", SAMPLE_INTERVAL);
     printf("  ╠══════════════════════════════════════════════════╣\n");
-    printf("  ║  Tekan Ctrl+C untuk menghentikan monitor         ║\n");
+    printf("  ║  Press Ctrl+C to stop the monitor                ║\n");
     printf("  ╚══════════════════════════════════════════════════╝\n");
     printf("\n");
     printf("  %-22s  %6s  %12s  %10s  %16s  %s\n",
-           "WAKTU", "CPU%", "RAM(used/total)", "DISK free",
+           "TIME", "CPU%", "RAM(used/total)", "DISK free",
            "NET rx/tx KB/s", "UPTIME");
     printf("  %s\n",
            "─────────────────────────────────────────────────────"
@@ -45,8 +45,8 @@ static void print_banner(const char *log_path)
 }
 
 /**
- * Mencetak satu baris ringkasan metrik ke stdout.
- * Format: iterasi | waktu | CPU | RAM | disk | net | uptime
+ * Prints one summary line of metrics to stdout.
+ * Format: iteration | time | CPU | RAM | disk | net | uptime
  */
 static void print_status_line(int iter, const SystemMetrics *m)
 {
@@ -62,11 +62,11 @@ static void print_status_line(int iter, const SystemMetrics *m)
     fflush(stdout);
 }
 
-/* ── Sleep dengan interupsi sinyal ─────────────────────────── */
+/* ── Sleep with signal interruption ─────────────────────────── */
 
 /**
- * Sleep selama 'seconds' detik, tapi keluar lebih awal
- * jika sinyal (Ctrl+C) diterima.
+ * Sleep for 'seconds' seconds, but exit early
+ * if signal (Ctrl+C) is received.
  */
 static void interruptible_sleep(int seconds)
 {
@@ -79,7 +79,7 @@ static void interruptible_sleep(int seconds)
 
 int main(void)
 {
-    /* Setup signal handler untuk Ctrl+C dan SIGTERM */
+    /* Setup signal handler for Ctrl+C and SIGTERM */
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
     sa.sa_handler = handle_signal;
@@ -87,10 +87,10 @@ int main(void)
     sigaction(SIGINT,  &sa, NULL);
     sigaction(SIGTERM, &sa, NULL);
 
-    /* ── Bangun path log ──────────────────────────────────── */
+    /* ── Build log path ──────────────────────────────────── */
     const char *home = getenv("HOME");
     if (!home) {
-        fprintf(stderr, "[sysmon] ERROR: Variabel $HOME tidak ditemukan.\n");
+        fprintf(stderr, "[sysmon] ERROR: $HOME variable not found.\n");
         return EXIT_FAILURE;
     }
 
@@ -105,19 +105,19 @@ int main(void)
     snprintf(backup_path, sizeof(backup_path),
              "%s/%s",      log_dir, LOG_BACKUP);
 
-    /* ── Pastikan direktori log ada ───────────────────────── */
+    /* ── Ensure log directory exists ───────────────────────── */
     if (ensure_log_dir(log_dir) != 0) {
         fprintf(stderr,
-                "[sysmon] ERROR: Tidak bisa membuat direktori %s: %s\n",
+                "[sysmon] ERROR: Cannot create directory %s: %s\n",
                 log_dir, strerror(errno));
         return EXIT_FAILURE;
     }
 
     print_banner(log_path);
 
-    /* ── Warm-up: sampling CPU pertama dibuang ─────────────
-     *   Ini memastikan delta CPU iterasi pertama akurat.
-     *   (fungsi internal sudah blocking 200ms)
+    /* ── Warm-up: discard first CPU sampling ─────────────
+     *   This ensures accurate CPU delta for first iteration.
+     *   (internal function already blocks 200ms)
      */
     calculate_cpu_usage();
 
@@ -126,45 +126,45 @@ int main(void)
 
     while (g_running) {
 
-        /* 1. Cek & rotasi log jika diperlukan */
+        /* 1. Check & rotate log if needed */
         rotate_log_if_needed(log_path, backup_path);
 
-        /* 2. Buka file log (append mode) */
+        /* 2. Open log file (append mode) */
         FILE *fp = open_log_file(log_path);
         if (!fp) {
-            /* Jika gagal buka, tunggu dan coba lagi */
+            /* If failed to open, wait and try again */
             fprintf(stderr,
-                    "[sysmon] WARNING: Menunggu akses log...\n");
+                    "[sysmon] WARNING: Waiting for log access...\n");
             interruptible_sleep(SAMPLE_INTERVAL);
             continue;
         }
 
-        /* 3. Kumpulkan semua metrik (blocking ~200ms untuk CPU) */
+        /* 3. Collect all metrics (blocking ~200ms for CPU) */
         SystemMetrics m;
         if (collect_metrics(&m) == 0) {
 
-            /* 4. Tulis ke file log */
+            /* 4. Write to log file */
             if (write_metrics(fp, &m) != 0) {
                 fprintf(stderr,
-                        "[sysmon] WARNING: Gagal menulis ke log.\n");
+                        "[sysmon] WARNING: Failed to write to log.\n");
             }
             fflush(fp);
 
-            /* 5. Tampilkan ringkasan di konsol */
+            /* 5. Display summary on console */
             print_status_line(++iteration, &m);
         }
 
         fclose(fp);
 
-        /* 6. Tunggu interval berikutnya (dengan interupsi sinyal) */
+        /* 6. Wait for next interval (with signal interruption) */
         interruptible_sleep(SAMPLE_INTERVAL);
     }
 
     /* ── Cleanup & Exit ───────────────────────────────────── */
     printf("\n");
     printf("  ╔══════════════════════════════════════════════════╗\n");
-    printf("  ║  Monitor dihentikan. Total sampel: %-5d          ║\n", iteration);
-    printf("  ║  Log tersimpan di:                               ║\n");
+    printf("  ║  Monitor stopped. Total samples: %-5d           ║\n", iteration);
+    printf("  ║  Log saved at:                                   ║\n");
     printf("  ║    %-44s  ║\n", log_path);
     printf("  ╚══════════════════════════════════════════════════╝\n\n");
 

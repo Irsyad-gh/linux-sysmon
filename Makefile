@@ -2,10 +2,10 @@
 #  Makefile — Linux System Monitor
 #  Usage:
 #    make          → build executable 'sysmon'
-#    make debug    → build dengan debug symbols & AddressSanitizer
-#    make clean    → hapus hasil build
-#    make install  → install ke /usr/local/bin (butuh sudo)
-#    make uninstall→ hapus dari /usr/local/bin
+#    make debug    → build with debug symbols & AddressSanitizer
+#    make clean    → remove build artifacts
+#    make install  → install to /usr/local/bin (requires sudo)
+#    make uninstall→ remove from /usr/local/bin
 # ──────────────────────────────────────────────────────────────
 
 CC       := gcc
@@ -14,12 +14,12 @@ SRCS     := main.c sysmon.c
 OBJS     := $(SRCS:.c=.o)
 DEPS     := sysmon.h
 
-# Flag standar: C11, semua warning aktif, optimasi O2
+# Standard flags: C11, all warnings active, O2 optimization
 CFLAGS   := -std=c11 -Wall -Wextra -Wpedantic -Wshadow \
              -Wformat=2 -Wconversion -O2
 LDFLAGS  :=
 
-# Flag untuk mode debug (AddressSanitizer + debug symbols)
+# Flags for debug mode (AddressSanitizer + debug symbols)
 DEBUG_FLAGS := -std=c11 -Wall -Wextra -Wpedantic -g3 -O0 \
                -fsanitize=address,undefined -fno-omit-frame-pointer
 
@@ -32,11 +32,11 @@ all: $(TARGET)
 $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 	@echo ""
-	@echo "  ✔  Build sukses → ./$(TARGET)"
+	@echo "  ✔  Build successful → ./$(TARGET)"
 	@echo "  Run: ./$(TARGET)"
 	@echo ""
 
-# Kompilasi setiap .c → .o
+# Compile each .c → .o
 %.o: %.c $(DEPS)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
@@ -44,9 +44,9 @@ $(TARGET): $(OBJS)
 .PHONY: debug
 debug: CFLAGS := $(DEBUG_FLAGS)
 debug: clean $(TARGET)
-	@echo "  [DEBUG BUILD — AddressSanitizer aktif]"
+	@echo "  [DEBUG BUILD — AddressSanitizer active]"
 
-# ── Instalasi ─────────────────────────────────────────────────
+# ── Installation ─────────────────────────────────────────────────
 .PHONY: install
 install: $(TARGET)
 	install -m 755 $(TARGET) $(PREFIX)/$(TARGET)
@@ -57,8 +57,8 @@ uninstall:
 	rm -f $(PREFIX)/$(TARGET)
 	@echo "  ✔  Uninstalled: $(PREFIX)/$(TARGET)"
 
-# ── Pembersihan ───────────────────────────────────────────────
+# ── Cleanup ───────────────────────────────────────────────
 .PHONY: clean
 clean:
 	rm -f $(OBJS) $(TARGET)
-	@echo "  ✔  Build artifacts dihapus."
+	@echo "  ✔  Build artifacts removed."

@@ -1,20 +1,20 @@
 /**
  * sysmon.c — Linux System Monitor
- * Implementasi pembacaan metrik sistem dari /proc filesystem.
+ * Implementation of reading system metrics from /proc filesystem.
  *
- * Standar: C11/C17
- * Kompilasi: gcc -std=c11 -Wall -Wextra -O2
+ * Standard: C11/C17
+ * Compilation: gcc -std=c11 -Wall -Wextra -O2
  */
 
 #include "sysmon.h"
 
 /* ══════════════════════════════════════════════════════════════
- *  CPU USAGE  —  baca /proc/stat dua kali, hitung delta
+ *  CPU USAGE  —  read /proc/stat twice, calculate delta
  * ══════════════════════════════════════════════════════════════ */
 
 /**
- * Membaca satu baris 'cpu' dari /proc/stat ke dalam CpuStat.
- * Return: 0 sukses, -1 gagal.
+ * Reads one 'cpu' line from /proc/stat into CpuStat.
+ * Return: 0 success, -1 failure.
  */
 int read_cpu_stat(CpuStat *out)
 {
@@ -35,10 +35,10 @@ int read_cpu_stat(CpuStat *out)
 }
 
 /**
- * Menghitung persentase CPU usage dengan metode delta.
- * Melakukan dua pembacaan dengan jeda CPU_SAMPLE_DELAY µs.
+ * Calculates CPU usage percentage using delta method.
+ * Performs two readings with CPU_SAMPLE_DELAY µs delay.
  *
- * Return: persen (0.0–100.0), atau -1.0 jika gagal.
+ * Return: percent (0.0–100.0), or -1.0 if failed.
  */
 double calculate_cpu_usage(void)
 {
@@ -46,7 +46,7 @@ double calculate_cpu_usage(void)
 
     if (read_cpu_stat(&s1) != 0) return -1.0;
 
-    /* nanosleep menggantikan usleep (deprecated di POSIX 2008) */
+    /* nanosleep replaces usleep (deprecated in POSIX 2008) */
     struct timespec ts_delay = {
         .tv_sec  = 0,
         .tv_nsec = (long)CPU_SAMPLE_DELAY * 1000L  /* µs → ns */
@@ -55,13 +55,13 @@ double calculate_cpu_usage(void)
 
     if (read_cpu_stat(&s2) != 0) return -1.0;
 
-    /* Total jiffy di setiap snapshot */
+    /* Total jiffies in each snapshot */
     unsigned long long total1 = s1.user + s1.nice + s1.system + s1.idle
                               + s1.iowait + s1.irq + s1.softirq + s1.steal;
     unsigned long long total2 = s2.user + s2.nice + s2.system + s2.idle
                               + s2.iowait + s2.irq + s2.softirq + s2.steal;
 
-    /* Idle mencakup idle + iowait */
+    /* Idle includes idle + iowait */
     unsigned long long idle1 = s1.idle + s1.iowait;
     unsigned long long idle2 = s2.idle + s2.iowait;
 
@@ -74,14 +74,14 @@ double calculate_cpu_usage(void)
 }
 
 /* ══════════════════════════════════════════════════════════════
- *  MEMORY  —  baca /proc/meminfo
+ *  MEMORY  —  read /proc/meminfo
  * ══════════════════════════════════════════════════════════════ */
 
 /**
- * Membaca informasi RAM dari /proc/meminfo.
- * Semua nilai disimpan dalam MB.
+ * Reads RAM information from /proc/meminfo.
+ * All values stored in MB.
  *
- * Return: 0 sukses, -1 gagal.
+ * Return: 0 success, -1 failure.
  */
 int read_mem_info(MemInfo *out)
 {
@@ -96,7 +96,7 @@ int read_mem_info(MemInfo *out)
     char line[128];
 
     while (fgets(line, sizeof(line), fp)) {
-        /* sscanf tidak sensitif spasi, cocok untuk format /proc/meminfo */
+        /* sscanf is not space-sensitive, suitable for /proc/meminfo format */
         if      (sscanf(line, "MemTotal: %ld kB",     &total_kb)     == 1) { /* ok */ }
         else if (sscanf(line, "MemFree: %ld kB",      &free_kb)      == 1) { /* ok */ }
         else if (sscanf(line, "MemAvailable: %ld kB", &available_kb) == 1) { /* ok */ }
@@ -110,21 +110,21 @@ int read_mem_info(MemInfo *out)
     out->available_mb = available_kb / 1024;
     out->buffers_mb   = buffers_kb   / 1024;
     out->cached_mb    = cached_kb    / 1024;
-    /* "Used" = Total - Available (bukan Total - Free!) */
+    /* "Used" = Total - Available (not Total - Free!) */
     out->used_mb      = out->total_mb - out->available_mb;
 
     return 0;
 }
 
 /* ══════════════════════════════════════════════════════════════
- *  DISK  —  gunakan statvfs() pada mountpoint
+ *  DISK  —  use statvfs() on mountpoint
  * ══════════════════════════════════════════════════════════════ */
 
 /**
- * Membaca informasi disk untuk mountpoint tertentu (biasanya "/").
- * Semua nilai dalam MB.
+ * Reads disk information for a specific mountpoint (usually "/").
+ * All values in MB.
  *
- * Return: 0 sukses, -1 gagal.
+ * Return: 0 success, -1 failure.
  */
 int read_disk_info(DiskInfo *out, const char *mountpoint)
 {
@@ -134,7 +134,7 @@ int read_disk_info(DiskInfo *out, const char *mountpoint)
         return -1;
     }
 
-    /* f_frsize = fundamental block size (lebih akurat dari f_bsize) */
+    /* f_frsize = fundamental block size (more accurate than f_bsize) */
     unsigned long long blk  = (unsigned long long)st.f_frsize;
     unsigned long long total = (unsigned long long)st.f_blocks * blk;
     unsigned long long free_ = (unsigned long long)st.f_bfree  * blk;
@@ -148,13 +148,13 @@ int read_disk_info(DiskInfo *out, const char *mountpoint)
 }
 
 /* ══════════════════════════════════════════════════════════════
- *  LOAD AVERAGE  —  baca /proc/loadavg
+ *  LOAD AVERAGE  —  read /proc/loadavg
  * ══════════════════════════════════════════════════════════════ */
 
 /**
- * Membaca load average 1m, 5m, 15m dari /proc/loadavg.
+ * Reads load average 1m, 5m, 15m from /proc/loadavg.
  *
- * Return: 0 sukses, -1 gagal.
+ * Return: 0 success, -1 failure.
  */
 int read_load_avg(double *la1, double *la5, double *la15)
 {
@@ -170,13 +170,13 @@ int read_load_avg(double *la1, double *la5, double *la15)
 }
 
 /* ══════════════════════════════════════════════════════════════
- *  UPTIME  —  baca /proc/uptime
+ *  UPTIME  —  read /proc/uptime
  * ══════════════════════════════════════════════════════════════ */
 
 /**
- * Membaca uptime dan memformatnya ke "DD:HH:MM:SS".
+ * Reads uptime and formats it to "DD:HH:MM:SS".
  *
- * Return: 0 sukses, -1 gagal.
+ * Return: 0 success, -1 failure.
  */
 int read_uptime(char *buf, size_t size)
 {
@@ -201,23 +201,23 @@ int read_uptime(char *buf, size_t size)
 }
 
 /* ══════════════════════════════════════════════════════════════
- *  NETWORK I/O  —  baca /proc/net/dev, hitung delta KB/s
+ *  NETWORK I/O  —  read /proc/net/dev, calculate delta KB/s
  * ══════════════════════════════════════════════════════════════ */
 
-/** State persisten antar pemanggilan untuk hitung delta */
+/** Persistent state between calls for delta calculation */
 typedef struct {
     unsigned long long rx_bytes;
     unsigned long long tx_bytes;
     struct timespec    ts;
     char               iface[NET_IFACE_LEN];
-    int                valid;   /* 1 jika sudah ada sampel sebelumnya */
+    int                valid;   /* 1 if there is a previous sample */
 } NetState;
 
 static NetState g_net_state = { 0 };
 
 /**
- * Menemukan interface jaringan pertama yang bukan "lo".
- * Ditulis ke buf, return pointer ke buf atau NULL jika tidak ditemukan.
+ * Finds the first network interface that is not "lo".
+ * Writes to buf, return pointer to buf or NULL if not found.
  */
 static char *find_active_iface(char *buf, size_t size)
 {
@@ -225,7 +225,7 @@ static char *find_active_iface(char *buf, size_t size)
     if (!fp) return NULL;
 
     char line[256];
-    /* Skip dua baris header /proc/net/dev */
+    /* Skip two header lines in /proc/net/dev */
     char *_skip;
     _skip = fgets(line, sizeof(line), fp); (void)_skip;
     _skip = fgets(line, sizeof(line), fp); (void)_skip;
@@ -235,7 +235,7 @@ static char *find_active_iface(char *buf, size_t size)
         unsigned long long dummy;
         if (sscanf(line, " %19[^:]: %llu", name, &dummy) == 2) {
             if (strcmp(name, "lo") != 0) {
-                /* Pastikan null-terminated: snprintf lebih aman dari strncpy */
+                /* Ensure null-terminated: snprintf is safer than strncpy */
                 snprintf(buf, size, "%s", name);
                 fclose(fp);
                 return buf;
@@ -247,14 +247,14 @@ static char *find_active_iface(char *buf, size_t size)
 }
 
 /**
- * Membaca rx_bytes dan tx_bytes untuk interface tertentu
- * dari /proc/net/dev.
+ * Reads rx_bytes and tx_bytes for a specific interface
+ * from /proc/net/dev.
  *
- * Format per baris:
+ * Format per line:
  *   iface: rx_bytes rx_pkts rx_errs rx_drop rx_fifo rx_frame rx_comp rx_mcast
  *          tx_bytes tx_pkts tx_errs tx_drop tx_fifo tx_colls tx_carr  tx_comp
  *
- * Return: 0 sukses, -1 gagal.
+ * Return: 0 success, -1 failure.
  */
 static int read_iface_bytes(const char   *iface,
                             unsigned long long *rx,
@@ -264,7 +264,7 @@ static int read_iface_bytes(const char   *iface,
     if (!fp) return -1;
 
     char line[256];
-    /* Skip dua baris header */
+    /* Skip two header lines */
     char *_skip;
     _skip = fgets(line, sizeof(line), fp); (void)_skip;
     _skip = fgets(line, sizeof(line), fp); (void)_skip;
@@ -290,14 +290,14 @@ static int read_iface_bytes(const char   *iface,
 }
 
 /**
- * Mengisi NetInfo dengan kecepatan RX/TX dalam KB/s.
- * Menggunakan state statis untuk menghitung delta antar panggilan.
+ * Fills NetInfo with RX/TX speeds in KB/s.
+ * Uses static state to calculate delta between calls.
  *
- * Return: 0 sukses, -1 gagal.
+ * Return: 0 success, -1 failure.
  */
 int read_net_info(NetInfo *out)
 {
-    /* Inisialisasi interface jika belum ada */
+    /* Initialize interface if not yet set */
     if (g_net_state.iface[0] == '\0') {
         if (!find_active_iface(g_net_state.iface, sizeof(g_net_state.iface))) {
             strncpy(g_net_state.iface, "eth0", sizeof(g_net_state.iface) - 1);
@@ -330,12 +330,12 @@ int read_net_info(NetInfo *out)
             out->tx_kbps = 0.0;
         }
     } else {
-        /* Sampel pertama: belum ada delta */
+        /* First sample: no delta yet */
         out->rx_kbps = 0.0;
         out->tx_kbps = 0.0;
     }
 
-    /* Simpan state untuk iterasi berikutnya */
+    /* Save state for next iteration */
     g_net_state.rx_bytes = rx_now;
     g_net_state.tx_bytes = tx_now;
     g_net_state.ts       = ts_now;
@@ -349,7 +349,7 @@ int read_net_info(NetInfo *out)
  * ══════════════════════════════════════════════════════════════ */
 
 /**
- * Mengisi buf dengan timestamp format "DD/MM/YYYY, HH:MM:SS".
+ * Fills buf with timestamp in format "DD/MM/YYYY, HH:MM:SS".
  */
 void get_timestamp(char *buf, size_t size)
 {
@@ -367,10 +367,10 @@ void get_timestamp(char *buf, size_t size)
  * ══════════════════════════════════════════════════════════════ */
 
 /**
- * Mengumpulkan semua metrik ke dalam satu SystemMetrics.
- * Fungsi ini akan memakan ~200ms karena CPU delta calculation.
+ * Collects all metrics into one SystemMetrics.
+ * This function takes ~200ms due to CPU delta calculation.
  *
- * Return: 0 sukses.
+ * Return: 0 success.
  */
 int collect_metrics(SystemMetrics *out)
 {
@@ -378,7 +378,7 @@ int collect_metrics(SystemMetrics *out)
 
     get_timestamp(out->timestamp, sizeof(out->timestamp));
 
-    /* CPU — fungsi ini blocking 200ms secara internal */
+    /* CPU — this function blocks 200ms internally */
     out->cpu_usage = calculate_cpu_usage();
     if (out->cpu_usage < 0.0) out->cpu_usage = 0.0;
 
@@ -396,10 +396,10 @@ int collect_metrics(SystemMetrics *out)
  * ══════════════════════════════════════════════════════════════ */
 
 /**
- * Menulis satu JSON object (satu baris) ke file log.
- * Format: JSON Lines — satu baris = satu snapshot.
+ * Writes one JSON object (one line) to the log file.
+ * Format: JSON Lines — one line = one snapshot.
  *
- * Return: 0 sukses, -1 gagal.
+ * Return: 0 success, -1 failure.
  */
 int write_metrics(FILE *fp, const SystemMetrics *m)
 {
@@ -459,9 +459,9 @@ int write_metrics(FILE *fp, const SystemMetrics *m)
  * ══════════════════════════════════════════════════════════════ */
 
 /**
- * Membuat direktori log jika belum ada.
+ * Creates log directory if it doesn't exist.
  *
- * Return: 0 sukses/sudah ada, -1 gagal.
+ * Return: 0 success/already exists, -1 failure.
  */
 int ensure_log_dir(const char *dirpath)
 {
@@ -477,44 +477,44 @@ int ensure_log_dir(const char *dirpath)
 }
 
 /**
- * Mengecek ukuran file log. Jika >= LOG_MAX_BYTES, lakukan rotasi:
- *   status.json  →  status.1.json  (rename, cepat O(1))
+ * Checks log file size. If >= LOG_MAX_BYTES, perform rotation:
+ *   status.json  →  status.1.json  (rename, fast O(1))
  *
- * Return: 0 (termasuk jika belum perlu rotasi), -1 jika rotasi gagal.
+ * Return: 0 (including if no rotation needed), -1 if rotation failed.
  */
 int rotate_log_if_needed(const char *log_path, const char *backup_path)
 {
     struct stat st;
 
-    /* File belum ada — belum perlu rotasi */
+    /* File doesn't exist yet — no rotation needed */
     if (stat(log_path, &st) != 0) return 0;
 
     if (st.st_size < LOG_MAX_BYTES) return 0;
 
-    /* Hapus backup lama jika ada */
+    /* Remove old backup if exists */
     remove(backup_path);
 
-    /* Rename — operasi O(1), atomik di filesystem yang sama */
+    /* Rename — O(1) operation, atomic on same filesystem */
     if (rename(log_path, backup_path) != 0) {
-        fprintf(stderr, "[sysmon] WARNING: Log rotation gagal: %s\n",
+        fprintf(stderr, "[sysmon] WARNING: Log rotation failed: %s\n",
                 strerror(errno));
         return -1;
     }
 
-    fprintf(stderr, "[sysmon] Log dirotasi: %s → %s\n", log_path, backup_path);
+    fprintf(stderr, "[sysmon] Log rotated: %s → %s\n", log_path, backup_path);
     return 0;
 }
 
 /**
- * Membuka file log dalam mode append.
+ * Opens log file in append mode.
  *
- * Return: FILE* atau NULL jika gagal.
+ * Return: FILE* or NULL if failed.
  */
 FILE *open_log_file(const char *path)
 {
     FILE *fp = fopen(path, "a");
     if (!fp) {
-        fprintf(stderr, "[sysmon] ERROR: Tidak bisa membuka log %s: %s\n",
+        fprintf(stderr, "[sysmon] ERROR: Cannot open log %s: %s\n",
                 path, strerror(errno));
     }
     return fp;

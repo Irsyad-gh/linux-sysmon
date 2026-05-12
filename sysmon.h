@@ -1,21 +1,21 @@
 /**
  * sysmon.h — Linux System Monitor
- * Header utama: structs, konstanta, dan deklarasi fungsi.
+ * Main header: structs, constants, and function declarations.
  *
- * Standar: C11/C17
- * Target : Linux (/proc filesystem)
+ * Standard: C11/C17
+ * Target: Linux (/proc filesystem)
  */
 
 #ifndef SYSMON_H
 #define SYSMON_H
 
 /*
- * Aktifkan POSIX.1-2008 API:
+ * Enable POSIX.1-2008 API:
  *   - sigaction, sigemptyset
  *   - clock_gettime (CLOCK_MONOTONIC)
- *   - PATH_MAX dari <limits.h>
- *   - strftime dan localtime_r
- * Harus dideklarasikan SEBELUM include apapun.
+ *   - PATH_MAX from <limits.h>
+ *   - strftime and localtime_r
+ * Must be declared BEFORE any includes.
  */
 #define _POSIX_C_SOURCE 200809L
 
@@ -29,22 +29,22 @@
 #include <sys/stat.h>
 #include <sys/statvfs.h>
 
-/* ── Konfigurasi ────────────────────────────────────────────── */
+/* ── Configuration ───────────────────────────────────────────── */
 
 #define SYSMON_VERSION     "1.0.0"
-#define SAMPLE_INTERVAL    5               /* detik antar sampling      */
-#define CPU_SAMPLE_DELAY   200000          /* µs jeda delta CPU (200ms) */
-#define LOG_DIR            ".status"       /* relatif terhadap $HOME    */
+#define SAMPLE_INTERVAL    5               /* seconds between sampling   */
+#define CPU_SAMPLE_DELAY   200000          /* µs CPU delta delay (200ms)  */
+#define LOG_DIR            ".status"       /* relative to $HOME           */
 #define LOG_FILE           "status.json"
 #define LOG_BACKUP         "status.1.json"
-#define LOG_MAX_BYTES      (10L * 1024L * 1024L)  /* 10 MB                     */
+#define LOG_MAX_BYTES      (10L * 1024L * 1024L)  /* 10 MB                      */
 #define NET_IFACE_LEN      20
 #define TIMESTAMP_LEN      32
 #define UPTIME_LEN         20
 
 /* ── Structs ────────────────────────────────────────────────── */
 
-/** Raw CPU jiffy counters dari /proc/stat */
+/** Raw CPU jiffy counters from /proc/stat */
 typedef struct {
     unsigned long long user;
     unsigned long long nice;
@@ -56,7 +56,7 @@ typedef struct {
     unsigned long long steal;
 } CpuStat;
 
-/** Informasi memori dalam MB */
+/** Memory information in MB */
 typedef struct {
     long total_mb;
     long used_mb;
@@ -66,21 +66,21 @@ typedef struct {
     long buffers_mb;
 } MemInfo;
 
-/** Informasi disk dalam MB */
+/** Disk information in MB */
 typedef struct {
     long total_mb;
     long used_mb;
     long free_mb;
 } DiskInfo;
 
-/** Kecepatan jaringan dalam KB/s */
+/** Network speed in KB/s */
 typedef struct {
     char   iface[NET_IFACE_LEN];
     double rx_kbps;
     double tx_kbps;
 } NetInfo;
 
-/** Struktur metrik lengkap satu snapshot */
+/** Complete metrics structure for one snapshot */
 typedef struct {
     char     timestamp[TIMESTAMP_LEN];
     double   cpu_usage;
@@ -91,7 +91,7 @@ typedef struct {
     NetInfo  net;
 } SystemMetrics;
 
-/* ── Deklarasi Fungsi ───────────────────────────────────────── */
+/* ── Function Declarations ───────────────────────────────────── */
 
 /* CPU */
 int    read_cpu_stat(CpuStat *out);
@@ -110,12 +110,12 @@ int    read_uptime(char *buf, size_t size);
 /* Network */
 int    read_net_info(NetInfo *out);
 
-/* Utilitas */
+/* Utilities */
 void   get_timestamp(char *buf, size_t size);
 int    collect_metrics(SystemMetrics *out);
 int    write_metrics(FILE *fp, const SystemMetrics *m);
 
-/* Manajemen Log */
+/* Log Management */
 int    ensure_log_dir(const char *dirpath);
 int    rotate_log_if_needed(const char *log_path, const char *backup_path);
 FILE  *open_log_file(const char *path);
