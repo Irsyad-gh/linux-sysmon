@@ -16,14 +16,18 @@ linux-sysmon/
 └── README.md
 ```
 
-## Build & Run
+## Install
+```
+sudo bash -c 'curl -fsSL "https://api.github.com/repos/Irsyad-gh/linux-sysmon/releases/latest" | grep -oP "(?<=\"browser_download_url\": \")[^\"]*linux[^\"]*" | head -1 | xargs -I{} curl -fsSL {} -o /usr/bin/linux-sysmon && chmod +x /usr/bin/linux-sysmon'
+```
+
+## Build Manually
 
 ```bash
+# cd to source code's directory
+
 # Build
 make
-
-# Run
-./sysmon
 
 # Build debug mode (AddressSanitizer)
 make debug
