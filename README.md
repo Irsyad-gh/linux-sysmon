@@ -33,7 +33,9 @@ cd linux-sysmon
 
 2. **Compile the project:**
 ```bash
-make
+make       #for x64
+make x86   #for x86
+make arm64 #for arm64
 ```
 
 
@@ -52,6 +54,146 @@ Logs are stored every 5 seconds in `~/.status/status.json`. You can watch the me
 ```bash
 tail -f ~/.status/status.json
 ```
+---
+### 🚩 Flags and Configuration
+#### 1. GENERAL (3 flags)
+
+| Flag | Function | Description |
+|------|----------|-----------|
+| `-h`, `--help` | Help | Show help message |
+| `-v`, `--version` | Version | Show version information |
+| `-V`, `--verbose` | Verbose | Enable debug mode |
+| `-c`, `--config` | Config | Load configuration file |
+
+#### 2. TIMING (3 flags)
+
+| Flag | Function | Default |
+|------|----------|---------|
+| `-i`, `--interval <seconds>` | Sampling interval | 5 seconds |
+| `--cpu-delay <us>` | CPU sampling delay | 200000 µs |
+| `-1`, `--one-shot` | Run once then exit | - |
+
+#### 3. LOGGING (5 flags)
+
+| Flag | Function | Default |
+|------|----------|---------|
+| `-l`, `--logdir <dir>` | Log directory | `~/.status` |
+| `-f`, `--logfile <name>` | Log filename | `status.json` |
+| `-o`, `--output <path>` | Override full output path | - |
+| `-m`, `--maxsize <MB>` | Log rotation size | 10 MB |
+| `--no-log` | Disable file logging | `false` |
+
+#### 4. DAEMON (2 flags)
+
+| Flag | Function |
+|------|----------|
+| `-d`, `--daemon` | Run in background |
+| `-p`, `--pidfile <file>` | Path to PID file |
+
+#### 5. NETWORK (1 flag)
+
+| Flag | Function | Default |
+|------|----------|---------|
+| `-n`, `--net-interface <iface>` | Network interface to monitor | Auto-detect |
+
+#### 6. PROCESS (1 flag)
+
+| Flag | Function | Default |
+|------|----------|---------|
+| `-t`, `--top-processes <N>` | Show top N processes | `0` (disabled) |
+
+#### 7. DISK (1 flag)
+
+| Flag | Function | Default |
+|------|----------|---------|
+| `--disk-mount <path>` | Disk mount point to monitor | `/` |
+
+#### 8. DISPLAY (1 flag)
+
+| Flag | Function |
+|------|----------|
+| `-q`, `--quiet` | No console output |
+
+---
+
+#### **CONFIGURATION VIA FILE**
+
+**INI Format** (`sysmon.ini`)
+
+```ini
+interval = 5
+cpu_delay = 200000
+logdir = ~/.status
+logfile = status.json
+maxsize = 10
+quiet = false
+verbose = false
+no_log = false
+daemon = false
+pidfile = 
+net-interface = 
+disk-mount = /
+top-processes = 0
+one-shot = false
+```
+
+**JSON Format** (`sysmon.json`)
+
+```json
+{
+    "interval": 5,
+    "cpu_delay": 200000,
+    "logdir": "~/.status",
+    "logfile": "status.json",
+    "maxsize": 10,
+    "quiet": false,
+    "verbose": false,
+    "no_log": false,
+    "daemon": false,
+    "pidfile": "",
+    "net-interface": "",
+    "disk-mount": "/",
+    "top-processes": 0,
+    "one-shot": false
+}
+```
+
+---
+
+#### **PRACTICAL EXAMPLES**
+
+```bash
+# Normal mode
+sysmon
+
+# Daemon mode with custom settings
+sysmon -d -i 30 -l /var/log/sysmon -p /var/run/sysmon.pid -q
+
+# Monitor specific interface + top 5 processes
+sysmon -n eth0 -t 5 -i 2 -V
+
+# One-time snapshot to file
+sysmon -1 -o /tmp/snapshot.json
+
+# Load from config file
+sysmon --config /etc/sysmon.ini
+
+# Override config file with CLI flags
+sysmon -c sysmon.ini -i 10 -t 5
+```
+
+---
+
+#### **TOTAL NEW ARGUMENTS**
+
+**18 Arguments Total**
+
+- **9 short flags**: `-h`, `-v`, `-i`, `-d`, `-l`, `-f`, `-m`, `-o`, `-n`, `-q`, `-c`, `-p`, `-t`, `-1`, `-V`
+- **12 long options**: `--help`, `--version`, `--interval`, `--daemon`, `--logdir`, `--logfile`, `--maxsize`, `--output`, `--net-interface`, `--quiet`, `--config`, `--pidfile`, `--top-processes`, `--disk-mount`, `--cpu-delay`, `--no-log`, `--one-shot`, `--verbose`
+
+**2 Configuration File Formats** (INI & JSON)  
+**Fully backward compatible** with the original sysmon
+
 
 ---
 
