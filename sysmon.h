@@ -11,10 +11,10 @@
 
 /*
  * Enable POSIX.1-2008 API:
- *   - sigaction, sigemptyset
- *   - clock_gettime (CLOCK_MONOTONIC)
- *   - PATH_MAX from <limits.h>
- *   - strftime and localtime_r
+ * - sigaction, sigemptyset
+ * - clock_gettime (CLOCK_MONOTONIC)
+ * - PATH_MAX from <limits.h>
+ * - strftime and localtime_r
  * Must be declared BEFORE any includes.
  */
 #define _POSIX_C_SOURCE 200809L
@@ -29,18 +29,22 @@
 #include <sys/stat.h>
 #include <sys/statvfs.h>
 
-/* ── Configuration ───────────────────────────────────────────── */
+/* ── Version ─────────────────────────────────────────────────── */
+#define SYSMON_VERSION "1.3.0"
 
-#define SYSMON_VERSION     "1.0.0"
-#define SAMPLE_INTERVAL    5               /* seconds between sampling   */
-#define CPU_SAMPLE_DELAY   200000          /* µs CPU delta delay (200ms)  */
-#define LOG_DIR            ".status"       /* relative to $HOME           */
-#define LOG_FILE           "status.json"
-#define LOG_BACKUP         "status.1.json"
-#define LOG_MAX_BYTES      (10L * 1024L * 1024L)  /* 10 MB                      */
-#define NET_IFACE_LEN      20
-#define TIMESTAMP_LEN      32
-#define UPTIME_LEN         20
+/* ── Compile-time defaults (bisa di-override via CLI args) ───── */
+#define SAMPLE_INTERVAL   5                       /* seconds between sampling */
+#define CPU_SAMPLE_DELAY  200000                  /* µs CPU delta delay (200ms) */
+#define LOG_DIR           ".status"               /* relative to $HOME */
+#define LOG_FILE          "status.json"
+#define LOG_BACKUP        "status.1.json"
+#define LOG_MAX_BYTES     (10L * 1024L * 1024L)  /* 10 MB */
+
+/* ── Ukuran buffer ───────────────────────────────────────────── */
+#define NET_IFACE_LEN  20
+#define TIMESTAMP_LEN  32
+#define UPTIME_LEN     20
+#define PROC_NAME_LEN  256
 
 /* ── Structs ────────────────────────────────────────────────── */
 
@@ -80,44 +84,68 @@ typedef struct {
     double tx_kbps;
 } NetInfo;
 
+/** Informasi satu proses (untuk --top-processes) */
+typedef struct {
+    int    pid;
+    char   name[PROC_NAME_LEN];
+    double cpu_pct;     /* persentase CPU */
+    long   rss_mb;      /* RAM usage dalam MB */
+} ProcInfo;
+
 /** Complete metrics structure for one snapshot */
 typedef struct {
-    char     timestamp[TIMESTAMP_LEN];
-    double   cpu_usage;
-    double   load_avg[3];   /* 1m, 5m, 15m */
-    MemInfo  mem;
-    DiskInfo disk;
-    char     uptime_str[UPTIME_LEN];
-    NetInfo  net;
+    char         timestamp[TIMESTAMP_LEN];
+    double       cpu_usage;
+    double       load_avg[3];              /* 1m, 5m, 15m */
+    MemInfo      mem;
+    DiskInfo     disk;
+    char         uptime_str[UPTIME_LEN];
+    NetInfo      net;
+
+    /* Top processes — hanya diisi jika top_n > 0 */
+    ProcInfo    *top_procs;
+    int          top_n;
 } SystemMetrics;
 
 /* ── Function Declarations ───────────────────────────────────── */
 
 /* CPU */
 int    read_cpu_stat(CpuStat *out);
+double calculate_cpu_usage_delay(int delay_us);
 double calculate_cpu_usage(void);
 
 /* Memory */
-int    read_mem_info(MemInfo *out);
+int read_mem_info(MemInfo *out);
 
 /* Disk */
-int    read_disk_info(DiskInfo *out, const char *mountpoint);
+int read_disk_info(DiskInfo *out, const char *mountpoint);
 
 /* Load Average & Uptime */
-int    read_load_avg(double *la1, double *la5, double *la15);
-int    read_uptime(char *buf, size_t size);
+int read_load_avg(double *la1, double *la5, double *la15);
+int read_uptime(char *buf, size_t size);
 
 /* Network */
-int    read_net_info(NetInfo *out);
+int read_net_info(NetInfo *out);
+void set_net_iface(const char *iface);   /* paksa interface tertentu */
+
+/* Top Processes */
+int read_top_processes(ProcInfo *procs, int n);
+int compare_procs_cpu(const void *a, const void *b);
 
 /* Utilities */
-void   get_timestamp(char *buf, size_t size);
-int    collect_metrics(SystemMetrics *out);
-int    write_metrics(FILE *fp, const SystemMetrics *m);
+void get_timestamp(char *buf, size_t size);
+int  collect_metrics(SystemMetrics *out, const char *mountpoint,
+                     int cpu_delay_us, int top_n);
+int  write_metrics(FILE *fp, const SystemMetrics *m);
+void free_metrics(SystemMetrics *m);
 
 /* Log Management */
-int    ensure_log_dir(const char *dirpath);
-int    rotate_log_if_needed(const char *log_path, const char *backup_path);
-FILE  *open_log_file(const char *path);
+int   ensure_log_dir(const char *dirpath);
+int   rotate_log_if_needed(const char *log_path, const char *backup_path,
+                            long max_bytes);
+FILE *open_log_file(const char *path);
+
+/* Daemon */
+int  daemonize(const char *pid_file, int verbose);
 
 #endif /* SYSMON_H */

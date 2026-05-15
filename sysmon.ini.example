@@ -1,0 +1,37 @@
+# sysmon.ini — INI configuration example for sysmon
+# Use with: sysmon --config sysmon.ini
+#
+# All values here can be overridden by CLI arguments.
+# Format: key = value
+# Comments start with # or ;
+
+# ── Timing ───────────────────────────────────────────────────
+interval = 5          ; Sampling interval in seconds
+cpu_delay = 200000    ; CPU sampling delay in microseconds
+
+# ── Logging ──────────────────────────────────────────────────
+logdir = ~/.status
+logfile = status.json
+maxsize = 10          ; Maximum log size in MB
+# output = /tmp/sysmon.json  ; Override logdir+logfile
+
+# ── Display ──────────────────────────────────────────────────
+quiet   = false
+verbose = false
+no_log  = false
+
+# ── Daemon ───────────────────────────────────────────────────
+daemon  = false
+# pidfile = /var/run/sysmon.pid
+
+# ── Network ──────────────────────────────────────────────────
+# net-interface = eth0   ; Leave empty for auto-detect
+
+# ── Disk ─────────────────────────────────────────────────────
+disk-mount = /
+
+# ── Process monitoring ────────────────────────────────────────
+top-processes = 0      ; 0 = disabled, N = display top N
+
+# ── Mode ─────────────────────────────────────────────────────
+one-shot = false

@@ -1,0 +1,21 @@
+{
+    "interval": 5,
+    "cpu_delay": 200000,
+
+    "logdir": "~/.status",
+    "logfile": "status.json",
+    "maxsize": 10,
+
+    "quiet": false,
+    "verbose": false,
+    "no_log": false,
+
+    "daemon": false,
+    "pidfile": "",
+
+    "net-interface": "",
+    "disk-mount": "/",
+
+    "top-processes": 0,
+    "one-shot": false
+}
