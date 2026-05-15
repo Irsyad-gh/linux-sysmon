@@ -32,8 +32,8 @@
 /* ── Version ─────────────────────────────────────────────────── */
 #define SYSMON_VERSION "1.3.0"
 
-/* ── Compile-time defaults (bisa di-override via CLI args) ───── */
 #define SAMPLE_INTERVAL   5                       /* seconds between sampling */
+/* ── Compile-time defaults (can be overridden via CLI args) ── */
 #define CPU_SAMPLE_DELAY  200000                  /* µs CPU delta delay (200ms) */
 #define LOG_DIR           ".status"               /* relative to $HOME */
 #define LOG_FILE          "status.json"

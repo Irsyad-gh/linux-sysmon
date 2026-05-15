@@ -2,10 +2,10 @@
 # Makefile — Linux System Monitor
 # Usage:
 #   make           → build executable 'sysmon'
-#   make debug     → build dengan debug symbols & AddressSanitizer
-#   make clean     → hapus build artifacts
-#   make install   → install ke /usr/local/bin (perlu sudo)
-#   make uninstall → hapus dari /usr/local/bin
+#   make debug     → build with debug symbols & AddressSanitizer
+#   make clean     → remove build artifacts
+#   make install   → install to /usr/local/bin (may require sudo)
+#   make uninstall → remove from /usr/local/bin
 # ──────────────────────────────────────────────────────────────
 
 CC      := gcc
@@ -34,17 +34,17 @@ $(TARGET): $(OBJS)
 %.o: %.c $(DEPS)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-# ── Build untuk x86 (32-bit) ─────────────────────────────────
+# ── Build for x86 (32-bit) ─────────────────────────────────
 x86: CFLAGS  += -m32
 x86: LDFLAGS += -m32
 x86: clean $(TARGET)
 	@echo " [TARGET ARCH: x86 32-bit]"
 
-# ── Build untuk x86_64 (eksplisit) ──────────────────────────
+# ── Build for x86_64 (explicit) ──────────────────────────
 x86_64: clean $(TARGET)
 	@echo " [TARGET ARCH: x86_64 native]"
 
-# ── Build untuk ARM64 ─────────────────────────────────────────
+# ── Build for ARM64 ─────────────────────────────────────────
 arm64: CC := $(ARM_CC)
 arm64: clean $(TARGET)
 	@echo " [TARGET ARCH: ARM64 / aarch64]"

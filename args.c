@@ -1,25 +1,25 @@
 /**
  * args.c — CLI Argument Parser Implementation
  *
- * Mengimplementasikan parsing semua CLI arguments untuk sysmon.
- * Mendukung format: -x, --long, --long=value, --long value
+ * Implements parsing of all CLI arguments for sysmon.
+ * Supports formats: -x, --long, --long=value, --long value
  *
  * Standard: C11/C17
  */
 
 #include "args.h"
-#include "sysmon.h"   /* untuk SYSMON_VERSION */
+#include "sysmon.h"   /* for SYSMON_VERSION */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include <errno.h>
 
-/* ══════════════════════════════════════════════════════════════
- * INTERNAL HELPERS
+/* ═════════════════════════════════════════════════════════════=
+ * CONFIG FILE LOADER (simple JSON/INI)
  * ══════════════════════════════════════════════════════════════ */
 
-/** Parse integer dengan validasi. Return -1 jika invalid. */
+/** Parse integer with validation. Return -1 if invalid. */
 static int parse_int(const char *s)
 {
     if (!s || *s == '\0') return -1;
@@ -29,7 +29,7 @@ static int parse_int(const char *s)
     return (int)v;
 }
 
-/** Trim whitespace dari string (in-place). */
+/** Trim whitespace from string (in-place). */
 static char *strtrim(char *s)
 {
     if (!s) return s;
@@ -53,52 +53,52 @@ void print_version(void)
 void print_help(const char *progname)
 {
     printf("Usage: %s [OPTIONS]\n\n", progname);
-    printf("A lightweight Linux system monitor with JSON logging.\n\n");
+        printf("A lightweight Linux system monitor with JSON logging.\n\n");
 
-    printf("GENERAL OPTIONS:\n");
-    printf("  -h, --help                  Tampilkan pesan ini lalu keluar\n");
-    printf("  -v, --version               Tampilkan versi lalu keluar\n");
-    printf("  -V, --verbose               Tampilkan lebih banyak info/debug\n");
-    printf("  -c, --config <file>         Load konfigurasi dari file JSON/INI\n\n");
+        printf("GENERAL OPTIONS:\n");
+        printf("  -h, --help                  Show this message then exit\n");
+        printf("  -v, --version               Show version then exit\n");
+        printf("  -V, --verbose               Show more info/debug\n");
+        printf("  -c, --config <file>         Load configuration from JSON/INI file\n\n");
 
-    printf("TIMING:\n");
-    printf("  -i, --interval <detik>      Sampling interval (default: %d detik)\n",
-           DEFAULT_INTERVAL);
-    printf("      --cpu-delay <us>        Delay CPU sampling dalam mikrodetik\n");
-    printf("                              (default: %d µs)\n", DEFAULT_CPU_DELAY);
-    printf("  -1, --one-shot              Ambil satu kali metrics lalu keluar\n");
-    printf("                              (cocok untuk cron/script)\n\n");
+        printf("TIMING:\n");
+        printf("  -i, --interval <seconds>    Sampling interval (default: %d seconds)\n",
+            DEFAULT_INTERVAL);
+        printf("      --cpu-delay <us>        Delay CPU sampling in microseconds\n");
+        printf("                              (default: %d µs)\n", DEFAULT_CPU_DELAY);
+        printf("  -1, --one-shot              Take one metrics snapshot and exit\n");
+        printf("                              (suitable for cron/scripts)\n\n");
 
-    printf("LOGGING:\n");
-    printf("  -l, --logdir <dir>          Directory log (default: ~/.status)\n");
-    printf("  -f, --logfile <nama>        Nama file log (default: status.json)\n");
-    printf("  -o, --output <path>         Output log ke path tertentu\n");
-    printf("                              (override --logdir + --logfile)\n");
-    printf("  -m, --maxsize <MB>          Ukuran maks sebelum rotate (default: %d MB)\n",
-           DEFAULT_MAX_MB);
-    printf("      --no-log                Disable file logging (hanya console)\n\n");
+        printf("LOGGING:\n");
+        printf("  -l, --logdir <dir>          Log directory (default: ~/.status)\n");
+        printf("  -f, --logfile <name>        Log file name (default: status.json)\n");
+        printf("  -o, --output <path>         Output log to a specific path\n");
+        printf("                              (overrides --logdir + --logfile)\n");
+        printf("  -m, --maxsize <MB>          Maximum size before rotate (default: %d MB)\n",
+            DEFAULT_MAX_MB);
+        printf("      --no-log                Disable file logging (console only)\n\n");
 
-    printf("DAEMON:\n");
-    printf("  -d, --daemon                Jalankan sebagai daemon (background)\n");
-    printf("  -p, --pidfile <file>        Path PID file (untuk daemon)\n\n");
+        printf("DAEMON:\n");
+        printf("  -d, --daemon                Run as daemon (background)\n");
+        printf("  -p, --pidfile <file>        PID file path (for daemon)\n\n");
 
-    printf("NETWORK:\n");
-    printf("  -n, --net-interface <iface> Pilih interface tertentu (misal: eth0, wlan0)\n\n");
+        printf("NETWORK:\n");
+        printf("  -n, --net-interface <iface> Select specific interface (e.g., eth0, wlan0)\n\n");
 
-    printf("DISPLAY:\n");
-    printf("  -q, --quiet                 Mode tanpa tampilan console (hanya logging)\n");
-    printf("  -t, --top-processes <N>     Tampilkan top N processes (CPU/RAM)\n\n");
+        printf("DISPLAY:\n");
+        printf("  -q, --quiet                 Quiet mode (no console display, logging only)\n");
+        printf("  -t, --top-processes <N>     Show top N processes (CPU/RAM)\n\n");
 
-    printf("DISK:\n");
-    printf("      --disk-mount <path>     Monitor disk pada mount point tertentu\n");
-    printf("                              (default: /)\n\n");
+        printf("DISK:\n");
+        printf("      --disk-mount <path>     Monitor disk on specific mount point\n");
+        printf("                              (default: /)\n\n");
 
-    printf("EXAMPLES:\n");
-    printf("  %s                          Jalankan dengan semua default\n", progname);
-    printf("  %s -i 10 -q -d             Daemon mode, interval 10 detik, tanpa console\n", progname);
-    printf("  %s -1 -o /tmp/snap.json    Satu kali snapshot ke file tertentu\n", progname);
-    printf("  %s -n wlan0 -t 5 -V        Monitor wlan0, top 5 proses, verbose\n", progname);
-    printf("  %s -c /etc/sysmon.ini      Load konfigurasi dari file\n\n", progname);
+        printf("EXAMPLES:\n");
+        printf("  %s                          Run with all defaults\n", progname);
+        printf("  %s -i 10 -q -d             Daemon mode, interval 10 seconds, no console\n", progname);
+        printf("  %s -1 -o /tmp/snap.json    One-time snapshot to a specific file\n", progname);
+        printf("  %s -n wlan0 -t 5 -V        Monitor wlan0, top 5 processes, verbose\n", progname);
+        printf("  %s -c /etc/sysmon.ini      Load configuration from file\n\n", progname);
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -117,7 +117,7 @@ void config_init(SysmonConfig *cfg)
     strncpy(cfg->log_file,    DEFAULT_LOG_FILE,    sizeof(cfg->log_file) - 1);
     strncpy(cfg->disk_mount,  DEFAULT_DISK_MOUNT,  sizeof(cfg->disk_mount) - 1);
 
-    /* log_dir akan diisi dari $HOME saat runtime jika tidak diset */
+    /* log_dir will be filled from $HOME at runtime if not set */
     cfg->log_dir[0]     = '\0';
     cfg->log_output[0]  = '\0';
     cfg->pid_file[0]    = '\0';
@@ -126,12 +126,12 @@ void config_init(SysmonConfig *cfg)
 }
 
 /* ══════════════════════════════════════════════════════════════
- * CONFIG FILE LOADER (JSON/INI sederhana)
+ * CONFIG FILE LOADER (simple JSON/INI)
  * ══════════════════════════════════════════════════════════════ */
 
 /**
- * Parse satu baris INI: key = value
- * JSON: "key": value  (subset sederhana, string saja)
+ * Parse one INI line: key = value
+ * JSON: "key": value  (simple subset, strings/numbers)
  */
 static void apply_config_line(SysmonConfig *cfg, const char *key, const char *val)
 {
@@ -175,7 +175,7 @@ static void apply_config_line(SysmonConfig *cfg, const char *key, const char *va
 }
 
 /**
- * Strip karakter dari string: hapus char c dari awal/akhir.
+ * Strip character from string: remove char c from entire string.
  */
 static void strip_char(char *s, char c)
 {
@@ -202,7 +202,7 @@ int load_config_file(SysmonConfig *cfg)
     int  lineno = 0;
     int  is_json = 0;
 
-    /* Deteksi format: jika baris pertama non-comment mengandung '{', anggap JSON */
+        /* Detect format: if first non-comment line contains '{', assume JSON */
     while (fgets(line, sizeof(line), fp)) {
         lineno++;
         char *t = strtrim(line);
@@ -217,7 +217,7 @@ int load_config_file(SysmonConfig *cfg)
         lineno++;
         char *t = strtrim(line);
 
-        /* Skip komentar, baris kosong, dan karakter JSON structural */
+        /* Skip comments, empty lines, and JSON structural characters */
         if (*t == '\0' || *t == '#' || *t == ';' || *t == '{' || *t == '}') continue;
 
         char key[128] = {0};
@@ -231,7 +231,7 @@ int load_config_file(SysmonConfig *cfg)
             strncpy(key, strtrim(t), sizeof(key) - 1);
             strncpy(val, strtrim(colon + 1), sizeof(val) - 1);
 
-            /* Hapus tanda kutip dan koma trailing */
+            /* Remove quotes and trailing comma */
             strip_char(key, '"');
             strip_char(key, '\'');
 
@@ -250,7 +250,7 @@ int load_config_file(SysmonConfig *cfg)
             strncpy(key, strtrim(t), sizeof(key) - 1);
             strncpy(val, strtrim(eq + 1), sizeof(val) - 1);
 
-            /* Hapus inline comment */
+            /* Remove inline comment */
             char *comment = strchr(val, '#');
             if (!comment) comment = strchr(val, ';');
             if (comment) { *comment = '\0'; strtrim(val); }
@@ -297,7 +297,7 @@ int parse_args(int argc, char *argv[], SysmonConfig *cfg)
     for (int i = 1; i < argc; i++) {
         const char *arg = argv[i];
 
-        /* Cek apakah long option */
+        /* Check if long option */
         int is_long = (strncmp(arg, "--", 2) == 0);
         int is_short = (!is_long && arg[0] == '-' && arg[1] != '\0' && arg[2] == '\0');
 
@@ -327,9 +327,9 @@ int parse_args(int argc, char *argv[], SysmonConfig *cfg)
 
             } else if (strcmp(longopt, "interval") == 0) {
                 const char *v = get_optval(eq_val, &i, argc, argv);
-                if (!v) { fprintf(stderr, "[sysmon] --interval membutuhkan nilai\n"); return -1; }
+                if (!v) { fprintf(stderr, "[sysmon] --interval requires a value\n"); return -1; }
                 int iv = parse_int(v);
-                if (iv < 1) { fprintf(stderr, "[sysmon] --interval harus >= 1 detik\n"); return -1; }
+                if (iv < 1) { fprintf(stderr, "[sysmon] --interval must be >= 1 second\n"); return -1; }
                 cfg->interval = iv;
 
             } else if (strcmp(longopt, "daemon") == 0) {
@@ -337,29 +337,29 @@ int parse_args(int argc, char *argv[], SysmonConfig *cfg)
 
             } else if (strcmp(longopt, "logdir") == 0) {
                 const char *v = get_optval(eq_val, &i, argc, argv);
-                if (!v) { fprintf(stderr, "[sysmon] --logdir membutuhkan nilai\n"); return -1; }
+                if (!v) { fprintf(stderr, "[sysmon] --logdir requires a value\n"); return -1; }
                 strncpy(cfg->log_dir, v, sizeof(cfg->log_dir) - 1);
 
             } else if (strcmp(longopt, "logfile") == 0) {
                 const char *v = get_optval(eq_val, &i, argc, argv);
-                if (!v) { fprintf(stderr, "[sysmon] --logfile membutuhkan nilai\n"); return -1; }
+                if (!v) { fprintf(stderr, "[sysmon] --logfile requires a value\n"); return -1; }
                 strncpy(cfg->log_file, v, sizeof(cfg->log_file) - 1);
 
             } else if (strcmp(longopt, "maxsize") == 0) {
                 const char *v = get_optval(eq_val, &i, argc, argv);
-                if (!v) { fprintf(stderr, "[sysmon] --maxsize membutuhkan nilai\n"); return -1; }
+                if (!v) { fprintf(stderr, "[sysmon] --maxsize requires a value\n"); return -1; }
                 int mv = parse_int(v);
-                if (mv < 1) { fprintf(stderr, "[sysmon] --maxsize harus >= 1 MB\n"); return -1; }
+                if (mv < 1) { fprintf(stderr, "[sysmon] --maxsize must be >= 1 MB\n"); return -1; }
                 cfg->max_size_mb = mv;
 
             } else if (strcmp(longopt, "output") == 0) {
                 const char *v = get_optval(eq_val, &i, argc, argv);
-                if (!v) { fprintf(stderr, "[sysmon] --output membutuhkan nilai\n"); return -1; }
+                if (!v) { fprintf(stderr, "[sysmon] --output requires a value\n"); return -1; }
                 strncpy(cfg->log_output, v, sizeof(cfg->log_output) - 1);
 
             } else if (strcmp(longopt, "net-interface") == 0) {
                 const char *v = get_optval(eq_val, &i, argc, argv);
-                if (!v) { fprintf(stderr, "[sysmon] --net-interface membutuhkan nilai\n"); return -1; }
+                if (!v) { fprintf(stderr, "[sysmon] --net-interface requires a value\n"); return -1; }
                 strncpy(cfg->net_iface, v, sizeof(cfg->net_iface) - 1);
 
             } else if (strcmp(longopt, "quiet") == 0) {
@@ -367,12 +367,12 @@ int parse_args(int argc, char *argv[], SysmonConfig *cfg)
 
             } else if (strcmp(longopt, "config") == 0) {
                 const char *v = get_optval(eq_val, &i, argc, argv);
-                if (!v) { fprintf(stderr, "[sysmon] --config membutuhkan nilai\n"); return -1; }
+                if (!v) { fprintf(stderr, "[sysmon] --config requires a value\n"); return -1; }
                 strncpy(cfg->config_file, v, sizeof(cfg->config_file) - 1);
 
             } else if (strcmp(longopt, "pidfile") == 0) {
                 const char *v = get_optval(eq_val, &i, argc, argv);
-                if (!v) { fprintf(stderr, "[sysmon] --pidfile membutuhkan nilai\n"); return -1; }
+                if (!v) { fprintf(stderr, "[sysmon] --pidfile requires a value\n"); return -1; }
                 strncpy(cfg->pid_file, v, sizeof(cfg->pid_file) - 1);
 
             } else if (strcmp(longopt, "no-log") == 0) {
@@ -380,21 +380,21 @@ int parse_args(int argc, char *argv[], SysmonConfig *cfg)
 
             } else if (strcmp(longopt, "top-processes") == 0) {
                 const char *v = get_optval(eq_val, &i, argc, argv);
-                if (!v) { fprintf(stderr, "[sysmon] --top-processes membutuhkan nilai\n"); return -1; }
+                if (!v) { fprintf(stderr, "[sysmon] --top-processes requires a value\n"); return -1; }
                 int tv = parse_int(v);
-                if (tv < 1) { fprintf(stderr, "[sysmon] --top-processes harus >= 1\n"); return -1; }
+                if (tv < 1) { fprintf(stderr, "[sysmon] --top-processes must be >= 1\n"); return -1; }
                 cfg->top_n = tv;
 
             } else if (strcmp(longopt, "disk-mount") == 0) {
                 const char *v = get_optval(eq_val, &i, argc, argv);
-                if (!v) { fprintf(stderr, "[sysmon] --disk-mount membutuhkan nilai\n"); return -1; }
+                if (!v) { fprintf(stderr, "[sysmon] --disk-mount requires a value\n"); return -1; }
                 strncpy(cfg->disk_mount, v, sizeof(cfg->disk_mount) - 1);
 
             } else if (strcmp(longopt, "cpu-delay") == 0) {
                 const char *v = get_optval(eq_val, &i, argc, argv);
-                if (!v) { fprintf(stderr, "[sysmon] --cpu-delay membutuhkan nilai\n"); return -1; }
+                if (!v) { fprintf(stderr, "[sysmon] --cpu-delay requires a value\n"); return -1; }
                 int cv = parse_int(v);
-                if (cv < 1) { fprintf(stderr, "[sysmon] --cpu-delay harus >= 1 µs\n"); return -1; }
+                if (cv < 1) { fprintf(stderr, "[sysmon] --cpu-delay must be >= 1 µs\n"); return -1; }
                 cfg->cpu_delay_us = cv;
 
             } else if (strcmp(longopt, "verbose") == 0) {
@@ -405,7 +405,7 @@ int parse_args(int argc, char *argv[], SysmonConfig *cfg)
 
             } else {
                 fprintf(stderr, "[sysmon] Unknown option: --%s\n", longopt);
-                fprintf(stderr, "Run '%s --help' untuk daftar opsi.\n", argv[0]);
+                fprintf(stderr, "Run '%s --help' for a list of options.\n", argv[0]);
                 return -1;
             }
 
@@ -427,9 +427,9 @@ int parse_args(int argc, char *argv[], SysmonConfig *cfg)
 
             case 'i': {
                 const char *v = get_optval(NULL, &i, argc, argv);
-                if (!v) { fprintf(stderr, "[sysmon] -i membutuhkan nilai\n"); return -1; }
+                if (!v) { fprintf(stderr, "[sysmon] -i requires a value\n"); return -1; }
                 int iv = parse_int(v);
-                if (iv < 1) { fprintf(stderr, "[sysmon] -i harus >= 1 detik\n"); return -1; }
+                if (iv < 1) { fprintf(stderr, "[sysmon] -i must be >= 1 second\n"); return -1; }
                 cfg->interval = iv;
                 break;
             }
@@ -440,37 +440,37 @@ int parse_args(int argc, char *argv[], SysmonConfig *cfg)
 
             case 'l': {
                 const char *v = get_optval(NULL, &i, argc, argv);
-                if (!v) { fprintf(stderr, "[sysmon] -l membutuhkan nilai\n"); return -1; }
+                if (!v) { fprintf(stderr, "[sysmon] -l requires a value\n"); return -1; }
                 strncpy(cfg->log_dir, v, sizeof(cfg->log_dir) - 1);
                 break;
             }
 
             case 'f': {
                 const char *v = get_optval(NULL, &i, argc, argv);
-                if (!v) { fprintf(stderr, "[sysmon] -f membutuhkan nilai\n"); return -1; }
+                if (!v) { fprintf(stderr, "[sysmon] -f requires a value\n"); return -1; }
                 strncpy(cfg->log_file, v, sizeof(cfg->log_file) - 1);
                 break;
             }
 
             case 'm': {
                 const char *v = get_optval(NULL, &i, argc, argv);
-                if (!v) { fprintf(stderr, "[sysmon] -m membutuhkan nilai\n"); return -1; }
+                if (!v) { fprintf(stderr, "[sysmon] -m requires a value\n"); return -1; }
                 int mv = parse_int(v);
-                if (mv < 1) { fprintf(stderr, "[sysmon] -m harus >= 1 MB\n"); return -1; }
+                if (mv < 1) { fprintf(stderr, "[sysmon] -m must be >= 1 MB\n"); return -1; }
                 cfg->max_size_mb = mv;
                 break;
             }
 
             case 'o': {
                 const char *v = get_optval(NULL, &i, argc, argv);
-                if (!v) { fprintf(stderr, "[sysmon] -o membutuhkan nilai\n"); return -1; }
+                if (!v) { fprintf(stderr, "[sysmon] -o requires a value\n"); return -1; }
                 strncpy(cfg->log_output, v, sizeof(cfg->log_output) - 1);
                 break;
             }
 
             case 'n': {
                 const char *v = get_optval(NULL, &i, argc, argv);
-                if (!v) { fprintf(stderr, "[sysmon] -n membutuhkan nilai\n"); return -1; }
+                if (!v) { fprintf(stderr, "[sysmon] -n requires a value\n"); return -1; }
                 strncpy(cfg->net_iface, v, sizeof(cfg->net_iface) - 1);
                 break;
             }
@@ -481,23 +481,23 @@ int parse_args(int argc, char *argv[], SysmonConfig *cfg)
 
             case 'c': {
                 const char *v = get_optval(NULL, &i, argc, argv);
-                if (!v) { fprintf(stderr, "[sysmon] -c membutuhkan nilai\n"); return -1; }
+                if (!v) { fprintf(stderr, "[sysmon] -c requires a value\n"); return -1; }
                 strncpy(cfg->config_file, v, sizeof(cfg->config_file) - 1);
                 break;
             }
 
             case 'p': {
                 const char *v = get_optval(NULL, &i, argc, argv);
-                if (!v) { fprintf(stderr, "[sysmon] -p membutuhkan nilai\n"); return -1; }
+                if (!v) { fprintf(stderr, "[sysmon] -p requires a value\n"); return -1; }
                 strncpy(cfg->pid_file, v, sizeof(cfg->pid_file) - 1);
                 break;
             }
 
             case 't': {
                 const char *v = get_optval(NULL, &i, argc, argv);
-                if (!v) { fprintf(stderr, "[sysmon] -t membutuhkan nilai\n"); return -1; }
+                if (!v) { fprintf(stderr, "[sysmon] -t requires a value\n"); return -1; }
                 int tv = parse_int(v);
-                if (tv < 1) { fprintf(stderr, "[sysmon] -t harus >= 1\n"); return -1; }
+                if (tv < 1) { fprintf(stderr, "[sysmon] -t must be >= 1\n"); return -1; }
                 cfg->top_n = tv;
                 break;
             }
@@ -508,13 +508,13 @@ int parse_args(int argc, char *argv[], SysmonConfig *cfg)
 
             default:
                 fprintf(stderr, "[sysmon] Unknown flag: -%c\n", flag);
-                fprintf(stderr, "Run '%s --help' untuk daftar opsi.\n", argv[0]);
+                fprintf(stderr, "Run '%s --help' for a list of options.\n", argv[0]);
                 return -1;
             }
 
         } else {
             fprintf(stderr, "[sysmon] Unknown argument: %s\n", arg);
-            fprintf(stderr, "Run '%s --help' untuk daftar opsi.\n", argv[0]);
+            fprintf(stderr, "Run '%s --help' for a list of options.\n", argv[0]);
             return -1;
         }
     }

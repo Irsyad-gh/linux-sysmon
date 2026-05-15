@@ -1,7 +1,7 @@
 /**
  * args.h — CLI Argument Parser for Linux System Monitor
  *
- * Defines SysmonConfig struct dan fungsi parse_args().
+ * Defines SysmonConfig struct and the parse_args() function.
  * Standard: C11/C17
  */
 
@@ -15,7 +15,7 @@
 #include <string.h>
 #include <limits.h>
 
-/* ── Defaults (bisa di-override lewat CLI) ───────────────────── */
+/* ── Defaults (can be overridden via CLI) ───────────────────── */
 #define DEFAULT_INTERVAL     5
 #define DEFAULT_LOG_DIR      ".status"
 #define DEFAULT_LOG_FILE     "status.json"
@@ -23,12 +23,12 @@
 #define DEFAULT_MAX_MB       10
 #define DEFAULT_DISK_MOUNT   "/"
 #define DEFAULT_CPU_DELAY    200000   /* µs */
-#define DEFAULT_TOP_N        0        /* 0 = tidak aktif */
+#define DEFAULT_TOP_N        0        /* 0 = disabled */
 
-/* ── Konfigurasi Runtime ─────────────────────────────────────── */
+/* ── Runtime Configuration ─────────────────────────────────── */
 typedef struct {
     /* Interval & timing */
-    int     interval;           /* -i/--interval <detik> */
+    int     interval;           /* -i/--interval <seconds> */
     int     cpu_delay_us;       /* --cpu-delay <us>      */
 
     /* Logging */
@@ -65,30 +65,30 @@ typedef struct {
 /* ── Function Declarations ───────────────────────────────────── */
 
 /**
- * Inisialisasi config dengan nilai default.
+ * Initialize config with default values.
  */
 void config_init(SysmonConfig *cfg);
 
 /**
- * Parse argv ke dalam SysmonConfig.
- * Return: 0 = OK, 1 = keluar normal (--help/--version), -1 = error.
+ * Parse argv into SysmonConfig.
+ * Return: 0 = OK, 1 = normal exit (--help/--version), -1 = error.
  */
 int parse_args(int argc, char *argv[], SysmonConfig *cfg);
 
 /**
- * Load konfigurasi dari file JSON/INI sederhana.
- * Dipanggil setelah parse_args jika cfg->config_file diisi.
- * Return: 0 = OK, -1 = gagal.
+ * Load configuration from a simple JSON/INI file.
+ * Called after parse_args if cfg->config_file is set.
+ * Return: 0 = OK, -1 = failure.
  */
 int load_config_file(SysmonConfig *cfg);
 
 /**
- * Tampilkan usage/help.
+ * Show usage/help.
  */
 void print_help(const char *progname);
 
 /**
- * Tampilkan versi.
+ * Show version.
  */
 void print_version(void);
 

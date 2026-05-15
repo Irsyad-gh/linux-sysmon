@@ -308,10 +308,10 @@ int read_net_info(NetInfo *out)
 }
 
 /* ══════════════════════════════════════════════════════════════
- * TOP PROCESSES — baca /proc/<pid>/stat dan /proc/<pid>/status
+ * TOP PROCESSES — read /proc/<pid>/stat and /proc/<pid>/status
  * ══════════════════════════════════════════════════════════════ */
 
-/** Helper: baca /proc/<pid>/comm untuk nama proses */
+/** Helper: read /proc/<pid>/comm for the process name */
 static int read_proc_name(int pid, char *buf, size_t size)
 {
     char path[64];
@@ -356,7 +356,7 @@ static unsigned long long read_proc_utime(int pid)
     if (!fp) return 0;
 
     unsigned long long utime = 0, stime = 0;
-    /* Field ke-14 (utime) dan ke-15 (stime), tapi nama proses bisa ada spasi */
+    /* Field 14 (utime) and 15 (stime), but the process name may contain spaces */
     /* Skip sampai ')' lalu baca sisa field */
     int c;
     while ((c = fgetc(fp)) != ')' && c != EOF) { /* skip */ }
@@ -378,7 +378,7 @@ static unsigned long long read_proc_utime(int pid)
     return utime + stime;
 }
 
-/** Comparator untuk qsort: urutkan berdasarkan CPU desc */
+/** Comparator for qsort: sort by CPU descending */
 int compare_procs_cpu(const void *a, const void *b)
 {
     const ProcInfo *pa = (const ProcInfo *)a;
@@ -399,11 +399,11 @@ int read_top_processes(ProcInfo *procs, int n)
 {
     if (!procs || n <= 0) return 0;
 
-    /* Kumpulkan semua PID dari /proc */
+    /* Collect all PIDs from /proc */
     DIR *d = opendir("/proc");
     if (!d) return 0;
 
-    /* Alokasi temporary array untuk semua proses */
+    /* Allocate temporary arrays for all processes */
     int      max_pids = 4096;
     int     *pids     = (int *)malloc((size_t)max_pids * sizeof(int));
     unsigned long long *t1 = (unsigned long long *)calloc((size_t)max_pids, sizeof(unsigned long long));
@@ -428,11 +428,11 @@ int read_top_processes(ProcInfo *procs, int n)
     }
     closedir(d);
 
-    /* Delay kecil untuk menghitung delta CPU */
+    /* Small delay to compute CPU delta */
     struct timespec ts = { .tv_sec = 0, .tv_nsec = 100000000L }; /* 100ms */
     nanosleep(&ts, NULL);
 
-    /* Baca total jiffies sistem untuk normalisasi */
+    /* Read total system jiffies for normalization */
     CpuStat cs1, cs2;
     read_cpu_stat(&cs1);
 
@@ -448,7 +448,7 @@ int read_top_processes(ProcInfo *procs, int n)
                                   + cs2.iowait + cs2.irq + cs2.softirq + cs2.steal;
     unsigned long long sys_delta  = (sys_total2 > sys_total1) ? (sys_total2 - sys_total1) : 1;
 
-    /* Isi array proses sementara */
+    /* Fill temporary process array */
     ProcInfo *all = (ProcInfo *)calloc((size_t)npids, sizeof(ProcInfo));
     if (!all) {
         free(pids); free(t1); free(t2);
@@ -472,7 +472,7 @@ int read_top_processes(ProcInfo *procs, int n)
     /* Sort by CPU descending */
     qsort(all, (size_t)npids, sizeof(ProcInfo), compare_procs_cpu);
 
-    /* Ambil top N */
+    /* Take top N */
     int take = (npids < n) ? npids : n;
     for (int i = 0; i < take; i++) {
         procs[i] = all[i];
@@ -506,7 +506,7 @@ void get_timestamp(char *buf, size_t size)
  *
  * mountpoint   : disk mount point (default "/")
  * cpu_delay_us : CPU sampling delay in microseconds
- * top_n        : jumlah proses teratas yang dikumpulkan (0 = tidak)
+ * top_n        : number of top processes to collect (0 = none)
  *
  * Return: 0 success.
  */
@@ -540,7 +540,7 @@ int collect_metrics(SystemMetrics *out, const char *mountpoint,
     return 0;
 }
 
-/** Bebaskan memori dinamis dalam SystemMetrics */
+/** Free dynamic memory inside SystemMetrics */
 void free_metrics(SystemMetrics *m)
 {
     if (m && m->top_procs) {
@@ -590,7 +590,7 @@ int write_metrics(FILE *fp, const SystemMetrics *m)
         m->net.iface, m->net.rx_kbps, m->net.tx_kbps
     );
 
-    /* Tambahkan top processes jika ada */
+    /* Append top processes if present */
     if (m->top_n > 0 && m->top_procs) {
         fprintf(fp, ", \"top_processes\": [");
         for (int i = 0; i < m->top_n; i++) {
@@ -628,8 +628,8 @@ int ensure_log_dir(const char *dirpath)
 }
 
 /**
- * Cek ukuran log. Jika >= max_bytes, lakukan rotasi.
- * max_bytes = 0 → gunakan LOG_MAX_BYTES default.
+ * Check log size. If >= max_bytes, perform rotation.
+ * max_bytes = 0 → use default LOG_MAX_BYTES.
  */
 int rotate_log_if_needed(const char *log_path, const char *backup_path,
                           long max_bytes)
@@ -668,7 +668,7 @@ FILE *open_log_file(const char *path)
 
 /**
  * Daemonize proses: fork, setsid, tutup stdin/stdout/stderr.
- * Jika pid_file != NULL, tulis PID ke file tersebut.
+ * If pid_file != NULL, write the PID to that file.
  *
  * Return: 0 success (di proses daemon), -1 error.
  */
@@ -682,14 +682,14 @@ int daemonize(const char *pid_file, int verbose)
     }
 
     if (pid > 0) {
-        /* Parent: tulis PID lalu keluar */
+        /* Parent: write PID then exit */
         if (pid_file && pid_file[0] != '\0') {
             FILE *pf = fopen(pid_file, "w");
             if (pf) {
                 fprintf(pf, "%d\n", (int)pid);
                 fclose(pf);
                 if (verbose) {
-                    fprintf(stderr, "[sysmon] PID %d ditulis ke %s\n",
+                    fprintf(stderr, "[sysmon] PID %d written to %s\n",
                             (int)pid, pid_file);
                 }
             } else {
@@ -703,7 +703,7 @@ int daemonize(const char *pid_file, int verbose)
         exit(EXIT_SUCCESS);
     }
 
-    /* Child: buat session baru */
+    /* Child: create a new session */
     if (setsid() < 0) {
         perror("[sysmon] setsid");
         return -1;

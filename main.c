@@ -125,7 +125,7 @@ static int build_log_paths(const SysmonConfig *cfg,
     /* Jika --output diberikan, override semua */
     if (cfg->log_output[0] != '\0') {
         strncpy(log_path, cfg->log_output, log_path_size - 1);
-        /* Buat backup: tambahkan .1 sebelum ekstensi */
+            /* Create backup: add .1 before the extension */
         snprintf(bak_path, bak_path_size, "%s.1", cfg->log_output);
         /* log_dir = direktori dari output path */
         strncpy(log_dir, cfg->log_output, log_dir_size - 1);
@@ -147,7 +147,7 @@ static int build_log_paths(const SysmonConfig *cfg,
     } else {
         const char *home = getenv("HOME");
         if (!home) {
-            fprintf(stderr, "[sysmon] ERROR: $HOME tidak ditemukan.\n");
+            fprintf(stderr, "[sysmon] ERROR: $HOME not found.\n");
             return -1;
         }
         snprintf(home_dir, sizeof(home_dir), "%s/%s", home, DEFAULT_LOG_DIR);
@@ -157,7 +157,7 @@ static int build_log_paths(const SysmonConfig *cfg,
     strncpy(log_dir, base_dir, log_dir_size - 1);
     snprintf(log_path, log_path_size, "%s/%s", base_dir, cfg->log_file);
 
-    /* Buat nama backup: ganti ekstensi atau tambah .1 */
+    /* Create backup name: replace extension or add .1 */
     const char *dot = strrchr(cfg->log_file, '.');
     if (dot) {
         /* file.json → file.1.json */
@@ -257,12 +257,12 @@ int main(int argc, char *argv[])
     int iteration = 0;
 
     do {
-        /* 1. Cek & rotasi log jika perlu */
+        /* 1. Check & rotate log if needed */
         if (!cfg.no_log) {
             rotate_log_if_needed(log_path, bak_path, max_bytes);
         }
 
-        /* 2. Buka file log jika perlu */
+        /* 2. Open log file if needed */
         FILE *fp = NULL;
         if (!cfg.no_log) {
             fp = open_log_file(log_path);
@@ -273,11 +273,11 @@ int main(int argc, char *argv[])
             }
         }
 
-        /* 3. Kumpulkan semua metrics */
+        /* 3. Collect all metrics */
         SystemMetrics m;
         if (collect_metrics(&m, cfg.disk_mount, cfg.cpu_delay_us, cfg.top_n) == 0) {
 
-            /* 4. Tulis ke file log */
+            /* 4. Write to log file */
             if (fp) {
                 if (write_metrics(fp, &m) != 0) {
                     fprintf(stderr, "[sysmon] WARNING: Failed to write log.\n");
@@ -285,7 +285,7 @@ int main(int argc, char *argv[])
                 fflush(fp);
             }
 
-            /* 5. Tampilkan di console jika tidak quiet */
+            /* 5. Display on console if not quiet */
             if (!cfg.quiet) {
                 print_status_line(++iteration, &m);
 
