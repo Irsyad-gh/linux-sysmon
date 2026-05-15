@@ -10,15 +10,16 @@
 * **Smart Logging:** Features built-in O(1) log rotation to ensure your storage never fills up unexpectedly.
 * **Native Performance:** Interacts directly with the Linux kernel for maximum efficiency.
 
----
+
 
 ## 🛠 User Guide
 
+<!--
 ### ⚡ Quick Install (One-Liner)
 Get up and running instantly by downloading the latest binary directly to your system:
 ```bash
 sudo bash -c 'curl -fsSL "[https://api.github.com/repos/Irsyad-gh/linux-sysmon/releases/latest](https://api.github.com/repos/Irsyad-gh/linux-sysmon/releases/latest)" | grep -oP "(?<=\"browser_download_url\": \")[^\"]*linux[^\"]*" | head -1 | xargs -I{} curl -fsSL {} -o /usr/bin/linux-sysmon && chmod +x /usr/bin/linux-sysmon'
-```
+``` -->
 
 ### 🔨 Manual Build from Source
 
