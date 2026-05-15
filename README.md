@@ -1,70 +1,93 @@
-# Linux System Monitor
+# 🚀 Linux System Monitor (sysmon)
 
-C-based system monitor that reads directly from the kernel filesystem `/proc`.  
-Writes metric data to a **JSON Lines** (`.jsonl`) file every 5 seconds.
+**A high-performance, lightweight, and native system monitor for Linux.**
+
+`sysmon` is a C-based utility designed for users who need real-time system insights without the overhead of heavy monitoring suites. By reading directly from the kernel's `/proc` filesystem, it provides raw, accurate data with minimal CPU and RAM impact.
+
+### Why use `sysmon`?
+* **Zero Bloat:** Written in pure C with no external dependencies.
+* **Data-Ready:** Outputs metrics in **JSON Lines** (`.jsonl`) format, perfect for automation and data pipelines.
+* **Smart Logging:** Features built-in O(1) log rotation to ensure your storage never fills up unexpectedly.
+* **Native Performance:** Interacts directly with the Linux kernel for maximum efficiency.
 
 ---
 
-## Project Structure
+## 🛠 User Guide
 
+### ⚡ Quick Install (One-Liner)
+Get up and running instantly by downloading the latest binary directly to your system:
+```bash
+sudo bash -c 'curl -fsSL "[https://api.github.com/repos/Irsyad-gh/linux-sysmon/releases/latest](https://api.github.com/repos/Irsyad-gh/linux-sysmon/releases/latest)" | grep -oP "(?<=\"browser_download_url\": \")[^\"]*linux[^\"]*" | head -1 | xargs -I{} curl -fsSL {} -o /usr/bin/linux-sysmon && chmod +x /usr/bin/linux-sysmon'
 ```
-linux-sysmon/
-├── sysmon.h    ← Header: structs, constants, function declarations
-├── sysmon.c    ← Implementation: CPU, RAM, Disk, Net, Log
-├── main.c      ← Entry point: main loop, signal handler
-├── Makefile
-└── README.md
-```
-<!--
-## Install
-```
-sudo bash -c 'curl -fsSL "https://api.github.com/repos/Irsyad-gh/linux-sysmon/releases/latest" | grep -oP "(?<=\"browser_download_url\": \")[^\"]*linux[^\"]*" | head -1 | xargs -I{} curl -fsSL {} -o /usr/bin/linux-sysmon && chmod +x /usr/bin/linux-sysmon'
-```
--->
 
-## Build Manually
+### 🔨 Manual Build from Source
+
+If you prefer building it yourself or want to customize the code:
+
+1. **Navigate to the source directory:**
+```bash
+cd linux-sysmon
+```
+
+
+2. **Compile the project:**
+```bash
+make
+```
+
+
+3. **Install to your system path:**
+```bash
+sudo make install
+```
+
+4. **Run the monitor:**
+Simply type `sysmon` in your terminal.
+
+### 📈 Accessing Your Data
+
+Logs are stored every 5 seconds in `~/.status/status.json`. You can watch the metrics live using:
 
 ```bash
-# cd to source code's directory
-
-# Build
-make
-
-# Build debug mode (AddressSanitizer)
-make debug
-
-# Install to /usr/local/bin
-sudo make install
-sysmon
+tail -f ~/.status/status.json
 ```
 
-## Output Log
+---
 
-Logs are saved in `~/.status/status.json` (JSON Lines format):
+## ⚙️ Technical Reference
 
-```json
-{"time": "12/05/2026, 15:00:05", "cpu_usage": 12.5, "load_avg": [0.50, 0.40, 0.35], "ram": {"total": 8192, "used": 2048, "free": 6144, "available": 6000, "cached": 1200, "buffers": 300}, "disk": {"total_mb": 476940, "used_mb": 120000, "free_mb": 356940}, "uptime": "01:10:05:20", "net": {"iface": "eth0", "rx_kbps": 12.5, "tx_kbps": 3.2}}
+### Project Architecture
+
+The project is structured for simplicity and modularity:
+
+* `sysmon.h`: Constants, data structures, and function declarations.
+* `sysmon.c`: Core implementation for CPU, RAM, Disk, and Network tracking.
+* `main.c`: Entry point handling the main execution loop and signals.
+* `Makefile`: Standard build instructions.
+
+### Monitored Metrics
+
+| Category | Data Captured |
+| --- | --- |
+| **CPU** | Usage % (delta jiffy) and Load Average (1m/5m/15m) |
+| **RAM** | Total, Used, Free, Available, Cached, and Buffers |
+| **Disk** | Total, Used, and Free space on the root (`/`) partition |
+| **Network** | Active interface, RX (Download) KB/s, and TX (Upload) KB/s |
+| **System** | Uptime (DD:HH:MM:SS) and precise timestamps |
+
+### Advanced Configuration
+
+Modify these values in `sysmon.h` to tune the monitor's behavior:
+
+```c
+#define SAMPLE_INTERVAL   5                       // Seconds between samples
+#define LOG_MAX_BYTES     (10L * 1024L * 1024L)  // Rotate log at 10 MB
+
 ```
 
-### Log Rotation
+### Integration Example (Python)
 
-File is rotated when it reaches **10 MB**:
-```
-status.json  →  status.1.json   (rename, O(1))
-```
-A new `status.json` file is created automatically on the next iteration.
-
-## Monitored Metrics
-
-| Category | Data |
-|----------|------|
-| **CPU**  | Usage % (delta jiffy), Load Average 1m/5m/15m |
-| **RAM**  | Total, Used, Free, Available, Cached, Buffers |
-| **Disk** | Total, Used, Free on `/` |
-| **Net**  | Active interface, RX KB/s, TX KB/s |
-| **System** | Uptime (DD:HH:MM:SS), Timestamp |
-
-## Parsing Log with Python
+Easily parse your system logs for custom dashboards or analysis:
 
 ```python
 import json
@@ -74,18 +97,11 @@ with open("/home/user/.status/status.json") as f:
         entry = json.loads(line)
         print(f"{entry['time']} | CPU: {entry['cpu_usage']}% | "
               f"RAM: {entry['ram']['used']}/{entry['ram']['total']} MB")
+
 ```
 
-## Configuration (in `sysmon.h`)
+## 📄 Requirements & Licensing
 
-```c
-#define SAMPLE_INTERVAL   5                       // sampling interval (seconds)
-#define CPU_SAMPLE_DELAY  200000                  // CPU delta delay (µs)
-#define LOG_MAX_BYTES     (10L * 1024L * 1024L)  // max log size before rotation
-```
-
-## Requirements
-
-- GCC with C11 support (`gcc >= 4.9`)
-- Linux with `/proc` filesystem (all modern distros)
-- No external dependencies
+* **OS:** Linux with `/proc` filesystem support.
+* **Compiler:** GCC with C11 support (`gcc >= 4.9`).
+* **License:** Distributed with MIT License. Feel free to fork, modify, and contribute!
