@@ -30,7 +30,7 @@
 #include <sys/statvfs.h>
 
 /* ── Version ─────────────────────────────────────────────────── */
-#define SYSMON_VERSION "1.3.0"
+#define SYSMON_VERSION "2.0.3"
 
 #define SAMPLE_INTERVAL   5                       /* seconds between sampling */
 /* ── Compile-time defaults (can be overridden via CLI args) ── */
