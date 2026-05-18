@@ -1,0 +1,28 @@
+name: Auto Publish Release Assets
+
+on:
+  push:
+    tags:
+      - 'v*' 
+
+jobs:
+  publish-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write 
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Buat GitHub Release dan Upload Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "Release ${{ github.ref_name }}"
+          generate_release_notes: true # <--- Membuat Release Note otomatis gratis dari GitHub
+          files: |
+            build/sysmon-x64
+            build/sysmon-x86
+            build/sysmon-arm64
+
